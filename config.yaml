@@ -1,0 +1,19 @@
+name: Enpal Wallbox Controller
+version: "1.0.0"
+slug: enpal_wallbox_controller
+description: Steuerung der Enpal Wallbox über Buttons via Selenium
+startup: services
+boot: auto
+options:
+  base_url: "http://192.168.2.70"
+schema:
+  base_url: str
+init: false
+arch:
+  - amd64
+  - aarch64
+  - armv7
+ports:
+  8090/tcp: 8090
+map:
+  - config:rw

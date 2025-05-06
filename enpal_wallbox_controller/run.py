@@ -4,12 +4,18 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import json
 import time
 import os
 
-BASE_URL = os.environ.get("BASE_URL", "http://192.168.2.70")  # Fallback optional
+#BASE_URL = os.environ.get("BASE_URL", "http://192.168.178.178")  # Fallback optional
 
+OPTIONS_PATH = "/data/options.json"
 
+with open(OPTIONS_PATH, "r") as f:
+    opts = json.load(f)
+
+BASE_URL = opts.get("base_url", "http://192.168.178.178")
 
 app = Flask(__name__)
 
@@ -86,7 +92,7 @@ def check_buttons_by_text():
 def get_status():
     try:
         driver = get_driver()
-        driver.get(os.environ.get("WALLBOX_URL", "http://192.168.2.70/wallbox"))
+        driver.get(os.environ.get("WALLBOX_URL", "http://192.168.178.178/wallbox"))
         time.sleep(2)
 
         # Mode extrahieren

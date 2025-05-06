@@ -3,7 +3,7 @@ FROM $BUILD_FROM
 
 ENV LANG C.UTF-8
 
-ENV BASE_URL="http://192.168.178.178"
+#ENV BASE_URL="http://192.168.178.178"
 
 RUN apk add --no-cache \
     python3 py3-pip \

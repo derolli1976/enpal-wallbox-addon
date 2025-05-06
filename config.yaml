@@ -5,7 +5,7 @@ description: Steuerung der Enpal Wallbox über Buttons via Selenium
 startup: services
 boot: auto
 options:
-  base_url: "http://192.168.2.70"
+  base_url: "http://192.168.178.178"
 schema:
   base_url: str
 init: false
@@ -14,6 +14,6 @@ arch:
   - aarch64
   - armv7
 ports:
-  8090/tcp: 8090
+  36725/tcp: 36725
 map:
   - config:rw

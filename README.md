@@ -1,6 +1,6 @@
 # Enpal Wallbox Controller (Home Assistant Add-on)
 
-Dieses Add-on ermöglicht die Steuerung der Enpal Wallbox über die lokale Webseite der Enpal Box (z. B. `http://192.168.2.70/wallbox`). Die Steuerung erfolgt durch automatisiertes Klicken der UI-Buttons mittels Selenium und Chromium im Headless-Modus.
+Dieses Add-on ermöglicht die Steuerung der Enpal Wallbox über die lokale Webseite der Enpal Box (z. B. `http://192.168.178.178/wallbox`). Die Steuerung erfolgt durch automatisiertes Klicken der UI-Buttons mittels Selenium und Chromium im Headless-Modus.
 
 ## 🔧 Funktionen
 
@@ -22,13 +22,15 @@ Alle Endpunkte akzeptieren `POST`-Requests:
 /wallbox/set_solar     → Setzt Lademodus auf Solar
 ```
 
-Der Dienst lauscht standardmäßig auf Port `8090`.
+Der Dienst lauscht standardmäßig auf Port `36725`.
 
-## 🚀 Installation
+## 🚀 Installation über Custom Repository
 
-1. Repository als lokales Add-on hinzufügen oder manuell in `/addons/enpal_wallbox_controller/` kopieren
-2. Add-on im Supervisor installieren
-3. Add-on starten
+1. Öffne im Home Assistant Menü **Einstellungen → Add-ons → Add-on Store**
+2. Klicke oben rechts auf die drei Punkte (⋮) und wähle **Repositories**
+3. Gib die URL deines Git-Repositories ein, das dieses Add-on enthält (z. B. `https://github.com/dein-benutzername/enpal-wallbox-addon`)
+4. Klicke auf **Hinzufügen** – das Add-on erscheint jetzt im Store
+5. Öffne das Add-on, installiere es und starte es anschließend
 
 ## 📦 Abhängigkeiten
 

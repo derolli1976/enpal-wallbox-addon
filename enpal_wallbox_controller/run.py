@@ -92,7 +92,7 @@ def check_buttons_by_text():
 def get_status():
     try:
         driver = get_driver()
-        driver.get(os.environ.get("WALLBOX_URL", "http://192.168.178.178/wallbox"))
+        driver.get(f"{BASE_URL}/wallbox")
         time.sleep(2)
 
         # Mode extrahieren

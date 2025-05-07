@@ -30,7 +30,9 @@ Der Dienst lauscht standardmäßig auf Port `36725`.
 2. Klicke oben rechts auf die drei Punkte (⋮) und wähle **Repositories**
 3. Gib die URL deines Git-Repositories ein, das dieses Add-on enthält (z. B. `https://github.com/dein-benutzername/enpal-wallbox-addon`)
 4. Klicke auf **Hinzufügen** – das Add-on erscheint jetzt im Store
-5. Öffne das Add-on, installiere es und starte es anschließend
+5. Öffne das Add-on und installiere es
+6. Bevor du das Add-on startest, öffne die Registerkarte **Konfiguration** und gib die IP-Adresse deiner Enpal Box ein (z. B. `192.168.178.178`)
+7. Danach kannst du das Add-on starten
 
 ## 📦 Abhängigkeiten
 

@@ -8,14 +8,18 @@ import json
 import time
 import os
 
-#BASE_URL = os.environ.get("BASE_URL", "http://192.168.178.178")  # Fallback optional
-
 OPTIONS_PATH = "/data/options.json"
 
 with open(OPTIONS_PATH, "r") as f:
     opts = json.load(f)
 
-BASE_URL = opts.get("base_url", "http://192.168.178.178")
+BASE_URL = opts.get("base_url", "http://192.168.x.x")
+
+# Prüfe auf Defaultwert oder leere URL
+if not BASE_URL or BASE_URL.strip() == "http://192.168.x.x" or BASE_URL.strip() == "__PLEASE_CONFIGURE__":
+    print("Fehler: Die base_url ist nicht konfiguriert oder entspricht dem Standardwert.")
+    print("Bitte die Add-on-Konfiguration in Home Assistant anpassen.")
+    exit(1)
 
 app = Flask(__name__)
 

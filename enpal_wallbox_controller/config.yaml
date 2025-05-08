@@ -1,11 +1,11 @@
 name: Enpal Wallbox Controller
-version: "1.0.2"
+version: "1.0.3"
 slug: enpal_wallbox_controller
 description: Steuerung der Enpal Wallbox über Buttons via Selenium
 startup: services
 boot: auto
 options:
-  base_url: "http://192.168.178.178"
+  base_url: "http://192.168.x.x"
 schema:
   base_url: str
 init: false

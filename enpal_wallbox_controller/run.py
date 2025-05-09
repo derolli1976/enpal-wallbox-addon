@@ -8,6 +8,7 @@ import json
 import time
 import re
 import os
+import traceback
 
 OPTIONS_PATH = "/data/options.json"
 

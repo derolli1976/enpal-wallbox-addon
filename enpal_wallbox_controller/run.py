@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import json
 import time
+import re
 import os
 
 OPTIONS_PATH = "/data/options.json"
@@ -13,11 +14,18 @@ OPTIONS_PATH = "/data/options.json"
 with open(OPTIONS_PATH, "r") as f:
     opts = json.load(f)
 
-BASE_URL = opts.get("base_url", "http://192.168.x.x")
+BASE_URL = opts.get("base_url", "http://192.168.x.x").strip()
 
-# Prüfe auf Defaultwert oder leere URL
-if not BASE_URL or BASE_URL.strip() == "http://192.168.x.x" or BASE_URL.strip() == "__PLEASE_CONFIGURE__":
-    print("Fehler: Die base_url ist nicht konfiguriert oder entspricht dem Standardwert.")
+VALID_URL_REGEX = r"^http://((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$"
+
+# Prüfe auf ungültige oder nicht konfigurierte URL
+if (
+    not BASE_URL
+    or BASE_URL in ["http://192.168.x.x", "__PLEASE_CONFIGURE__"]
+    or not BASE_URL.startswith("http://")
+    or not re.match(VALID_URL_REGEX, BASE_URL)
+):
+    print("Fehler: Die base_url ist ungültig oder nicht konfiguriert.")
     print("Bitte die Add-on-Konfiguration in Home Assistant anpassen.")
     exit(1)
 

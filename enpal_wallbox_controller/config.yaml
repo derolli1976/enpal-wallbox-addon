@@ -1,5 +1,5 @@
 name: Enpal Wallbox Controller
-version: "1.0.3"
+version: "1.0.4"
 slug: enpal_wallbox_controller
 description: Steuerung der Enpal Wallbox über Buttons via Selenium
 startup: services

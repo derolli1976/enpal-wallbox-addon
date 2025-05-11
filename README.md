@@ -45,3 +45,4 @@ Der Dienst lauscht standardmäßig auf Port `36725`.
 
 - Dieses Add-on ist nicht offiziell von Enpal unterstützt.
 - Die Steuerung basiert auf Annahmen über die HTML-Struktur – bei Änderungen kann eine Anpassung der Button-IDs nötig sein.
+- Aktuell funktioniert das Plugin nicht korrekt unter ARM64 (Raspberry Pi). Die notwendigen Änderungen sind etwas aufwändiger. Ich plane das ein.

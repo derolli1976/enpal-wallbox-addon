@@ -1,7 +1,7 @@
 name: Enpal Wallbox Controller
-version: "1.0.5"
+version: "1.0.6"
 slug: enpal_wallbox_controller
-description: Steuerung der Enpal Wallbox über Buttons via Selenium
+description: REST API zur Steuerung der Enpal Wallbox.
 startup: services
 boot: auto
 options:

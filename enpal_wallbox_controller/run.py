@@ -1,9 +1,10 @@
 from flask import Flask, jsonify
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.service import Service as FirefoxService
 import json
 import re
 import os
@@ -40,16 +41,18 @@ if (
 
 app = Flask(__name__)
 
+
+
 def get_driver():
-    _LOGGER.debug("Initializing WebDriver...")
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--window-size=1920x1080")
-    chrome_options.binary_location = "/usr/bin/chromium-browser"
-    driver = webdriver.Chrome(options=chrome_options)
-    _LOGGER.debug("WebDriver initialized successfully.")
+    _LOGGER.debug("Initializing Firefox WebDriver...")
+    firefox_options = FirefoxOptions()
+    firefox_options.add_argument("--headless")
+    firefox_options.add_argument("--width=1920")
+    firefox_options.add_argument("--height=1080")
+
+    service = FirefoxService(executable_path="/usr/bin/geckodriver")  # falls nötig, Pfad anpassen
+    driver = webdriver.Firefox(service=service, options=firefox_options)
+    _LOGGER.debug("Firefox WebDriver initialized successfully.")
     return driver
 
 def click_button_by_text(driver, label_text):
@@ -109,10 +112,8 @@ def get_status():
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Status ')]"))
         )
-
         mode_text = driver.find_element(By.XPATH, "//h6[contains(text(), 'Mode ')]").text.replace("Mode ", "").strip()
         status_text = driver.find_element(By.XPATH, "//p[contains(text(), 'Status ')]").text.replace("Status ", "").strip()
-
         result = {"success": True, "mode": mode_text, "status": status_text}
         _LOGGER.debug(f"Response JSON: {json.dumps(result)}")
         _LOGGER.info(f"Status retrieved: mode='{mode_text}', status='{status_text}'")
@@ -130,41 +131,31 @@ def get_status():
 def start_charging():
     driver = get_driver()
     success = click_button_by_text(driver, "Start Charging")
-    response = {"success": success}
-    _LOGGER.debug(f"Response JSON: {json.dumps(response)}")
-    return jsonify(response)
+    return jsonify({"success": success})
 
 @app.route("/wallbox/stop", methods=["POST"])
 def stop_charging():
     driver = get_driver()
     success = click_button_by_text(driver, "Stop Charging")
-    response = {"success": success}
-    _LOGGER.debug(f"Response JSON: {json.dumps(response)}")
-    return jsonify(response)
+    return jsonify({"success": success})
 
 @app.route("/wallbox/set_eco", methods=["POST"])
 def set_mode_eco():
     driver = get_driver()
     success = click_button_by_text(driver, "Set Eco")
-    response = {"success": success}
-    _LOGGER.debug(f"Response JSON: {json.dumps(response)}")
-    return jsonify(response)
+    return jsonify({"success": success})
 
 @app.route("/wallbox/set_full", methods=["POST"])
 def set_mode_full():
     driver = get_driver()
     success = click_button_by_text(driver, "Set Full")
-    response = {"success": success}
-    _LOGGER.debug(f"Response JSON: {json.dumps(response)}")
-    return jsonify(response)
+    return jsonify({"success": success})
 
 @app.route("/wallbox/set_solar", methods=["POST"])
 def set_mode_solar():
     driver = get_driver()
     success = click_button_by_text(driver, "Set Solar")
-    response = {"success": success}
-    _LOGGER.debug(f"Response JSON: {json.dumps(response)}")
-    return jsonify(response)
+    return jsonify({"success": success})
 
 if __name__ == "__main__":
     _LOGGER.info("Starting Wallbox API service on port 36725...")

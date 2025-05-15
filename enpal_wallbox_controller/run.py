@@ -1,15 +1,18 @@
+import json
+import logging
+import os
+import re
+import traceback
+
 from flask import Flask, jsonify
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
-import json
-import re
-import os
-import traceback
-import logging
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -41,6 +44,17 @@ if (
 
 app = Flask(__name__)
 
+def robust_wait(driver, xpath, timeout=10, retries=3):
+    for attempt in range(1, retries + 1):
+        try:
+            _LOGGER.debug(f"[robust_wait] Attempt {attempt}/{retries} for xpath: {xpath}")
+            return WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.XPATH, xpath))
+            )
+        except TimeoutException:
+            _LOGGER.warning(f"[robust_wait] Timeout waiting for {xpath} (attempt {attempt})")
+    _LOGGER.error(f"[robust_wait] Failed to find {xpath} after {retries} attempts.")
+    raise TimeoutException(f"Element not found after {retries} retries: {xpath}")
 
 
 def get_driver():
@@ -100,32 +114,43 @@ def check_buttons_by_text():
     finally:
         driver.quit()
 
+
+
 @app.route("/wallbox/status", methods=["GET"])
 def get_status():
     _LOGGER.info("Retrieving wallbox status...")
     driver = get_driver()
     try:
         driver.get(f"{BASE_URL}/wallbox")
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//h6[contains(text(), 'Mode ')]"))
-        )
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//p[contains(text(), 'Status ')]"))
-        )
-        mode_text = driver.find_element(By.XPATH, "//h6[contains(text(), 'Mode ')]").text.replace("Mode ", "").strip()
-        status_text = driver.find_element(By.XPATH, "//p[contains(text(), 'Status ')]").text.replace("Status ", "").strip()
+
+        _LOGGER.debug("Waiting for 'Mode' element...")
+        mode_element = robust_wait(driver, "//h6[contains(text(), 'Mode ')]", timeout=5, retries=3)
+
+        _LOGGER.debug("Waiting for 'Status' element...")
+        status_element = robust_wait(driver, "//p[contains(text(), 'Status ')]", timeout=5, retries=3)
+
+        mode_text = mode_element.text.replace("Mode ", "").strip()
+        status_text = status_element.text.replace("Status ", "").strip()
+
         result = {"success": True, "mode": mode_text, "status": status_text}
         _LOGGER.debug(f"Response JSON: {json.dumps(result)}")
         _LOGGER.info(f"Status retrieved: mode='{mode_text}', status='{status_text}'")
         return jsonify(result)
+
+    except TimeoutException as te:
+        _LOGGER.warning("Final TimeoutException in get_status. Dumping page source.")
+        _LOGGER.debug(driver.page_source)
+        return jsonify({"success": False, "error": f"Timeout retrieving wallbox status: {str(te)}"})
+
     except Exception as e:
-        error_result = {"success": False, "error": str(e)}
-        _LOGGER.debug(f"Error JSON: {json.dumps(error_result)}")
-        _LOGGER.error(f"Error retrieving status: {e}")
+        _LOGGER.debug(driver.page_source)
         _LOGGER.debug(traceback.format_exc())
-        return jsonify(error_result)
+        _LOGGER.error(f"Unexpected error in get_status: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
     finally:
         driver.quit()
+
 
 @app.route("/wallbox/start", methods=["POST"])
 def start_charging():

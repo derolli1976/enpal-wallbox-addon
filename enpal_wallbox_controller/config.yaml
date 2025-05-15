@@ -1,5 +1,5 @@
 name: Enpal Wallbox Controller
-version: "1.0.6"
+version: "1.0.7"
 slug: enpal_wallbox_controller
 description: REST API zur Steuerung der Enpal Wallbox.
 startup: services

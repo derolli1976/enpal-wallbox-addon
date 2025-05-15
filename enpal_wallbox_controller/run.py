@@ -13,22 +13,38 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
-_LOGGER = logging.getLogger(__name__)
-
+DEFAULT_LOG_LEVEL = "INFO"
 OPTIONS_PATH = "/data/options.json"
+
 
 try:
     with open(OPTIONS_PATH, "r") as f:
         opts = json.load(f)
-    _LOGGER.info("Options loaded successfully.")
 except Exception as e:
-    _LOGGER.critical(f"Failed to load options: {e}")
+    print(f"Failed to load options: {e}")
     exit(1)
+
+# Mapping aus Text → Logging-Konstante
+LOG_LEVEL_MAP = {
+    "CRITICAL": logging.CRITICAL,
+    "ERROR": logging.ERROR,
+    "WARNING": logging.WARNING,
+    "INFO": logging.INFO,
+    "DEBUG": logging.DEBUG,
+    "NOTSET": logging.NOTSET
+}
+
+configured_level = opts.get("log_level", DEFAULT_LOG_LEVEL).upper()
+log_level = LOG_LEVEL_MAP.get(configured_level, logging.INFO)
+
+# Logging setup
+logging.basicConfig(
+    level=log_level,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.info(f"Logging level set to: {configured_level}")
+
 
 BASE_URL = opts.get("base_url", "http://192.168.x.x").strip()
 VALID_URL_REGEX = r"^http://((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$"

@@ -1,0 +1,39 @@
+name: Generate CHANGELOG.md
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-changelog:
+    name: Generate CHANGELOG
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install github_changelog_generator
+        run: gem install github_changelog_generator
+
+      - name: Generate CHANGELOG.md
+        run: |
+          github_changelog_generator \
+            --user derolli1976 \
+            --project enpal-wallbox-addon \
+            --token ${{ secrets.GITHUB_TOKEN }} \
+            --output CHANGELOG.md \
+            --no-verbose
+
+      - name: Commit and push CHANGELOG.md
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "Auto-update CHANGELOG.md"
+          git push

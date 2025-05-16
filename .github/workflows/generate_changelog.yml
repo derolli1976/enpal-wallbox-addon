@@ -10,8 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history, main branch)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -27,13 +30,13 @@ jobs:
             --user derolli1976 \
             --project enpal-wallbox-addon \
             --token ${{ secrets.GITHUB_TOKEN }} \
-            --output CHANGELOG.md \
+            --output enpal_wallbox_controller/CHANGELOG.md \
             --no-verbose
 
       - name: Commit and push CHANGELOG.md
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add CHANGELOG.md
+          git add enpal_wallbox_controller/CHANGELOG.md
           git diff --cached --quiet || git commit -m "Auto-update CHANGELOG.md"
-          git push
+          git push origin HEAD:main

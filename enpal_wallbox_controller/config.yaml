@@ -1,13 +1,15 @@
 name: Enpal Wallbox Controller
-version: "1.0.7"
+version: "1.1.0"
 slug: enpal_wallbox_controller
 description: REST API zur Steuerung der Enpal Wallbox.
 startup: services
 boot: auto
 options:
   base_url: "http://192.168.x.x"
+  log_level: "INFO"
 schema:
   base_url: str
+  log_level: list(DEBUG|INFO)
 init: false
 arch:
   - amd64

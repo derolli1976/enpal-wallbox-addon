@@ -10,11 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository (full history, main branch)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -33,10 +32,12 @@ jobs:
             --output enpal_wallbox_controller/CHANGELOG.md \
             --no-verbose
 
-      - name: Commit and push CHANGELOG.md
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add enpal_wallbox_controller/CHANGELOG.md
-          git diff --cached --quiet || git commit -m "Auto-update CHANGELOG.md"
-          git push origin HEAD:main
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Auto-update CHANGELOG.md"
+          branch: changelog/update-${{ github.run_number }}
+          title: "Update CHANGELOG.md from latest release"
+          body: "This pull request was automatically generated after a new release."
+          base: main

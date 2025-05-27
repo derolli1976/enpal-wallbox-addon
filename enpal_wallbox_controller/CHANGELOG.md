@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.2.0](https://github.com/derolli1976/enpal-wallbox-addon/tree/v1.2.0) (2025-05-27)
+
+[Full Changelog](https://github.com/derolli1976/enpal-wallbox-addon/compare/v1.1.0...v1.2.0)
+
+**Fixed bugs:**
+
+- \[Bug\] Wallbox Addon unresponsive on Synology Nas [\#17](https://github.com/derolli1976/enpal-wallbox-addon/issues/17)
+
+**Merged pull requests:**
+
+- Webdriver threading [\#18](https://github.com/derolli1976/enpal-wallbox-addon/pull/18) ([derolli1976](https://github.com/derolli1976))
+- Update CHANGELOG.md from latest release [\#16](https://github.com/derolli1976/enpal-wallbox-addon/pull/16) ([github-actions[bot]](https://github.com/apps/github-actions))
+
 ## [v1.1.0](https://github.com/derolli1976/enpal-wallbox-addon/tree/v1.1.0) (2025-05-16)
 
 [Full Changelog](https://github.com/derolli1976/enpal-wallbox-addon/compare/v1.0.7...v1.1.0)

@@ -8,7 +8,7 @@ Dieses Add-on ermöglicht die Steuerung der Enpal Wallbox über die lokale Webse
 - Automatisierte Klicks auf Web-UI per Headless Chrome
 - Unterstützt folgende Aktionen:
   - Start / Stop Ladevorgang
-  - Wechsel zwischen Lademodi: Eco / Solar / Full
+  - Wechsel zwischen Lademodi: Eco / Solar / Full (Fast)
 
 ## 🔌 HTTP-Endpunkte
 
@@ -19,6 +19,7 @@ Alle Endpunkte akzeptieren `POST`-Requests:
 /wallbox/stop          → Stoppt den Ladevorgang
 /wallbox/set_eco       → Setzt Lademodus auf Eco
 /wallbox/set_full      → Setzt Lademodus auf Full
+/wallbox/set_fast      → Setzt Lademodus auf Full
 /wallbox/set_solar     → Setzt Lademodus auf Solar
 ```
 
@@ -39,10 +40,9 @@ Der Dienst lauscht standardmäßig auf Port `36725`.
 - Python 3
 - Flask (HTTP-Server)
 - Selenium
-- Chromium + Chromedriver
+- Firefox + Geckodriver
 
 ## ⚠️ Hinweise
 
 - Dieses Add-on ist nicht offiziell von Enpal unterstützt.
 - Die Steuerung basiert auf Annahmen über die HTML-Struktur – bei Änderungen kann eine Anpassung der Button-IDs nötig sein.
-- Aktuell funktioniert das Plugin nicht korrekt unter ARM64 (Raspberry Pi). Die notwendigen Änderungen sind etwas aufwändiger. Ich plane das ein.

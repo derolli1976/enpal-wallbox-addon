@@ -1,20 +1,30 @@
 # Changelog
 
+## [Unreleased](https://github.com/derolli1976/enpal-wallbox-addon/tree/HEAD)
+
+[Full Changelog](https://github.com/derolli1976/enpal-wallbox-addon/compare/v1.2.1...HEAD)
+
+**Fixed bugs:**
+
+- Wallbox API kommuniziert seit Neustart nicht mehr mit Integration [\#24](https://github.com/derolli1976/enpal-wallbox-addon/issues/24)
+
 ## [v1.2.1](https://github.com/derolli1976/enpal-wallbox-addon/tree/v1.2.1) (2026-05-01)
 
 [Full Changelog](https://github.com/derolli1976/enpal-wallbox-addon/compare/v1.2.0...v1.2.1)
 
 **Fixed bugs:**
 
-- \[Bug\] Status nicht mehr lesbar nach Enpal Firmware-Update [\#24](https://github.com/derolli1976/enpal-wallbox-addon/issues/24)
+- \[BUG\] Wallbox add-on module cannot be installed [\#20](https://github.com/derolli1976/enpal-wallbox-addon/issues/20)
 
-**Implemented enhancements:**
+**Closed issues:**
 
-- Kompatibilität mit neuer Enpal Box Firmware: Statusfeld heißt jetzt `Connector` (OCPP-Werte) statt `Status`. Beide Varianten werden automatisch erkannt.
-- Übersetzung der neuen OCPP-Werte (`Available`, `Charging`, `Finishing`, `SuspendedEV`, ...) in das bisherige Legacy-Vokabular (`NotConnected`, `Connected`, `Charging`, `Finishing`, `Unknown`), damit die Home Assistant Integration ohne Änderung weiter funktioniert.
-- Originalwert wird zusätzlich als `raw_status` (plus `status_source: "connector"`) im JSON-Response zurückgegeben.
-- Neuer Lademodus-Endpoint `POST /wallbox/set_smart` und neuer Button `Set Smart`.
+- Ladestände der Fahrzeuge anzeigen wie in der App [\#22](https://github.com/derolli1976/enpal-wallbox-addon/issues/22)
 
+**Merged pull requests:**
+
+- Hotfix for new OPCC status messages. [\#25](https://github.com/derolli1976/enpal-wallbox-addon/pull/25) ([derolli1976](https://github.com/derolli1976))
+- Change assignee in auto-assign workflow [\#23](https://github.com/derolli1976/enpal-wallbox-addon/pull/23) ([derolli1976](https://github.com/derolli1976))
+- Update CHANGELOG.md from latest release [\#19](https://github.com/derolli1976/enpal-wallbox-addon/pull/19) ([github-actions[bot]](https://github.com/apps/github-actions))
 
 ## [v1.2.0](https://github.com/derolli1976/enpal-wallbox-addon/tree/v1.2.0) (2025-05-27)
 

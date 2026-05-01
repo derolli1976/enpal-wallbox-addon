@@ -48,11 +48,43 @@ if not BASE_URL or BASE_URL in ["http://192.168.x.x", "__PLEASE_CONFIGURE__"] or
 
 app = Flask(__name__)
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for Home Assistant supervisor monitoring.
+    
+    Returns HTTP 200 if service is healthy, 503 if unhealthy.
+    """
+    try:
+        # Verify configuration is valid
+        if not BASE_URL:
+            return jsonify({"status": "unhealthy", "error": "BASE_URL not configured"}), 503
+        
+        # Verify driver can be accessed (doesn't create new one if exists)
+        driver = get_shared_driver()
+        is_active = driver is not None
+        
+        return jsonify({
+            "status": "healthy",
+            "driver_active": is_active,
+            "base_url": BASE_URL
+        }), 200
+    except Exception as e:
+        _LOGGER.error(f"Health check failed: {e}")
+        return jsonify({"status": "unhealthy", "error": str(e)}), 503
+
 # Shared WebDriver management
 shared_driver = None
 driver_lock = threading.Lock()
 last_used = 0
 DRIVER_TIMEOUT_SEC = 300
+
+# Status caching for transient "Unknown" states
+# When the wallbox reports "Charging" and then briefly switches to "Unknown",
+# we cache the last valid "Charging" status for up to 10 minutes.
+STATUS_CACHE_TIMEOUT_SEC = 600  # 10 minutes
+_cached_status = None       # Last known valid "Charging" status text
+_cached_mode = None         # Corresponding mode at the time of caching
+_unknown_since = None       # Timestamp when "Unknown" was first seen after "Charging"
 
 def init_driver():
     _LOGGER.debug("Starting new Firefox WebDriver...")
@@ -66,8 +98,24 @@ def init_driver():
 def get_shared_driver():
     global shared_driver, last_used
     with driver_lock:
+        # Check if driver exists and is still responsive
+        if shared_driver is not None:
+            try:
+                # Quick health check - accessing current_url should be fast
+                _ = shared_driver.current_url
+                _LOGGER.debug("Existing driver is responsive")
+            except Exception as e:
+                _LOGGER.warning(f"Driver became unresponsive: {e}. Recreating...")
+                try:
+                    shared_driver.quit()
+                except Exception:
+                    pass
+                shared_driver = None
+        
+        # Create new driver if needed
         if shared_driver is None:
             shared_driver = init_driver()
+        
         last_used = time.time()
         return shared_driver
 
@@ -86,6 +134,33 @@ def shutdown_driver_when_unused():
 
 threading.Thread(target=shutdown_driver_when_unused, daemon=True).start()
 
+class ButtonLabels:
+    """Enpal Box UI button text (currently English only).
+    
+    Centralized button labels for easier maintenance and future localization.
+    """
+    START_CHARGING = "Start Charging"
+    STOP_CHARGING = "Stop Charging"
+    SET_ECO = "Set Eco"
+    SET_FULL = "Set Full"
+    SET_SOLAR = "Set Solar"
+    
+    @classmethod
+    def all(cls):
+        """Return list of all button labels."""
+        return [cls.START_CHARGING, cls.STOP_CHARGING, cls.SET_ECO, cls.SET_FULL, cls.SET_SOLAR]
+
+def build_button_xpath(label_text):
+    """Build case-insensitive XPath for button matching by text.
+    
+    Args:
+        label_text: The button text to search for (case-insensitive)
+    
+    Returns:
+        XPath string for locating the button element
+    """
+    return f"//span[translate(normalize-space(text()), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='{label_text.upper()}']/.."
+
 def robust_wait(driver, xpath, timeout=10, retries=3):
     for attempt in range(1, retries + 1):
         try:
@@ -103,7 +178,7 @@ def click_button_by_text(label_text):
         _LOGGER.debug(f"Page loaded: {driver.current_url}")
         # _LOGGER.debug(driver.page_source)
 
-        xpath = f"//span[translate(normalize-space(text()), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='{label_text.upper()}']/.."
+        xpath = build_button_xpath(label_text)
         _LOGGER.debug(f"Using XPath: {xpath}")
         _LOGGER.debug("Waiting for element to become clickable...")
         WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, xpath)))
@@ -125,10 +200,10 @@ def check_buttons_by_text():
         _LOGGER.debug(f"Page loaded: {driver.current_url}")
         # _LOGGER.debug(driver.page_source)
 
-        button_labels = ["Start Charging", "Stop Charging", "Set Eco", "Set Full", "Set Solar"]
+        button_labels = ButtonLabels.all()
         results = {}
         for label in button_labels:
-            xpath = f"//span[translate(normalize-space(text()), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')='{label.upper()}']/.."
+            xpath = build_button_xpath(label)
             try:
                 _LOGGER.debug(f"Checking for button '{label}' using XPath: {xpath}")
                 WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, xpath)))
@@ -145,6 +220,77 @@ def check_buttons_by_text():
         _LOGGER.debug(traceback.format_exc())
         _LOGGER.debug(driver.page_source)
         return jsonify({"success": False, "error": str(e)})
+
+def _apply_status_cache(status_text, mode_text):
+    """Apply caching logic for transient 'Unknown' status after 'Charging'.
+    
+    When the wallbox was previously reporting 'Charging' and switches to 'Unknown',
+    the cached 'Charging' status is returned for up to STATUS_CACHE_TIMEOUT_SEC (10 min).
+    After that timeout, 'Unknown' is passed through.
+    
+    Args:
+        status_text: The raw status text from the wallbox page
+        mode_text: The raw mode text from the wallbox page
+    
+    Returns:
+        Tuple of (effective_status, effective_mode, is_cached)
+    """
+    global _cached_status, _cached_mode, _unknown_since
+
+    status_upper = status_text.upper() if status_text else ""
+
+    # Case 1: Status is valid (not "Unknown") → update cache, reset unknown timer
+    if status_upper != "UNKNOWN":
+        if status_upper == "CHARGING":
+            _cached_status = status_text
+            _cached_mode = mode_text
+            _LOGGER.debug(f"Status cache updated: status='{status_text}', mode='{mode_text}'")
+        else:
+            # Non-charging, non-unknown status → clear cache
+            _cached_status = None
+            _cached_mode = None
+            _LOGGER.debug(f"Status cache cleared (status='{status_text}' is not 'Charging')")
+        _unknown_since = None
+        return status_text, mode_text, False
+
+    # Case 2: Status is "Unknown"
+    if _cached_status is None:
+        # No cached Charging status → pass through Unknown immediately
+        _LOGGER.debug("Status is 'Unknown' but no cached 'Charging' status available")
+        _unknown_since = None
+        return status_text, mode_text, False
+
+    now = time.time()
+
+    if _unknown_since is None:
+        # First time seeing Unknown after Charging → start timer, return cached
+        _unknown_since = now
+        _LOGGER.info(
+            f"Status is 'Unknown' after 'Charging' → returning cached status "
+            f"'{_cached_status}' (cache window: {STATUS_CACHE_TIMEOUT_SEC}s)"
+        )
+        return _cached_status, _cached_mode, True
+
+    elapsed = now - _unknown_since
+    if elapsed < STATUS_CACHE_TIMEOUT_SEC:
+        # Still within cache window → return cached status
+        remaining = STATUS_CACHE_TIMEOUT_SEC - elapsed
+        _LOGGER.info(
+            f"Status still 'Unknown' ({elapsed:.0f}s) → returning cached "
+            f"'{_cached_status}' ({remaining:.0f}s remaining)"
+        )
+        return _cached_status, _cached_mode, True
+
+    # Cache window expired → pass through Unknown, clear cache
+    _LOGGER.warning(
+        f"Status 'Unknown' persisted for {elapsed:.0f}s (>{STATUS_CACHE_TIMEOUT_SEC}s) "
+        f"→ cache expired, passing through 'Unknown'"
+    )
+    _cached_status = None
+    _cached_mode = None
+    _unknown_since = None
+    return status_text, mode_text, False
+
 
 @app.route("/wallbox/status", methods=["GET"])
 def get_status():
@@ -164,9 +310,15 @@ def get_status():
         mode_text = mode_element.text.replace("Mode ", "").strip()
         status_text = status_element.text.replace("Status ", "").strip()
 
-        result = {"success": True, "mode": mode_text, "status": status_text}
+        # Apply status caching logic for transient "Unknown" after "Charging"
+        effective_status, effective_mode, is_cached = _apply_status_cache(status_text, mode_text)
+
+        result = {"success": True, "mode": effective_mode, "status": effective_status}
+        if is_cached:
+            result["cached"] = True
+            result["raw_status"] = status_text
         _LOGGER.debug(f"Status result JSON: {json.dumps(result)}")
-        _LOGGER.info(f"Status retrieved: mode='{mode_text}', status='{status_text}'")
+        _LOGGER.info(f"Status retrieved: mode='{effective_mode}', status='{effective_status}'{' (cached)' if is_cached else ''}")
         return jsonify(result)
 
     except TimeoutException as te:
@@ -183,24 +335,24 @@ def get_status():
 
 @app.route("/wallbox/start", methods=["POST"])
 def start_charging():
-    return jsonify({"success": click_button_by_text("Start Charging")})
+    return jsonify({"success": click_button_by_text(ButtonLabels.START_CHARGING)})
 
 @app.route("/wallbox/stop", methods=["POST"])
 def stop_charging():
-    return jsonify({"success": click_button_by_text("Stop Charging")})
+    return jsonify({"success": click_button_by_text(ButtonLabels.STOP_CHARGING)})
 
 @app.route("/wallbox/set_eco", methods=["POST"])
 def set_mode_eco():
-    return jsonify({"success": click_button_by_text("Set Eco")})
+    return jsonify({"success": click_button_by_text(ButtonLabels.SET_ECO)})
 
 @app.route("/wallbox/set_full", methods=["POST"])
 @app.route("/wallbox/set_fast", methods=["POST"])
 def set_mode_full():
-    return jsonify({"success": click_button_by_text("Set Full")})
+    return jsonify({"success": click_button_by_text(ButtonLabels.SET_FULL)})
 
 @app.route("/wallbox/set_solar", methods=["POST"])
 def set_mode_solar():
-    return jsonify({"success": click_button_by_text("Set Solar")})
+    return jsonify({"success": click_button_by_text(ButtonLabels.SET_SOLAR)})
 
 if __name__ == "__main__":
     _LOGGER.info("Starting Wallbox API service on port 36725...")

@@ -21,7 +21,33 @@ Alle Endpunkte akzeptieren `POST`-Requests:
 /wallbox/set_full      → Setzt Lademodus auf Full
 /wallbox/set_fast      → Setzt Lademodus auf Full
 /wallbox/set_solar     → Setzt Lademodus auf Solar
+/wallbox/set_smart     → Setzt Lademodus auf Smart
 ```
+
+Zusätzlich:
+
+```
+GET  /wallbox/status              → Aktueller Modus & Status (JSON)
+GET  /wallbox/available_buttons   → Welche Buttons sind aktuell sichtbar?
+GET  /health                      → Healthcheck für den Supervisor
+```
+
+### Statusfeld & Firmware-Kompatibilität
+
+Neuere Firmware-Versionen der Enpal Box zeigen das Statusfeld als `Connector ...` mit OCPP-Werten an, ältere als `Status ...`. Das Add-on erkennt beide Varianten automatisch und übersetzt die neuen OCPP-Werte in das bisherige Vokabular, damit bestehende Home Assistant Automationen unverändert weiter funktionieren:
+
+| Connector (neue Firmware) | Status (Legacy)  | Bedeutung                          |
+| ------------------------- | ---------------- | ---------------------------------- |
+| `Available`               | `NotConnected`   | Kein Auto angeschlossen            |
+| `Preparing`               | `Connected`      | Verbindung wird aufgebaut          |
+| `Charging`                | `Charging`       | Lädt aktiv                         |
+| `Finishing`               | `Connected`      | Auto angesteckt, lädt nicht        |
+| `SuspendedEV`             | `Finishing`      | Fertig geladen / Soll erreicht     |
+| `SuspendedEVSE`           | `Connected`      | Pause durch Wallbox (z. B. Solar)  |
+| `Reserved`                | `Connected`      | Reserviert                         |
+| `Unavailable` / `Faulted` | `Unknown`        | Wartung / Fehler                   |
+
+Der OCPP-Originalwert ist im `/wallbox/status`-Response zusätzlich als `raw_status` (mit `status_source: "connector"`) enthalten.
 
 Der Dienst lauscht standardmäßig auf Port `36725`.
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.2.1](https://github.com/derolli1976/enpal-wallbox-addon/tree/v1.2.1) (2026-05-01)
+
+[Full Changelog](https://github.com/derolli1976/enpal-wallbox-addon/compare/v1.2.0...v1.2.1)
+
+**Fixed bugs:**
+
+- \[Bug\] Status nicht mehr lesbar nach Enpal Firmware-Update [\#24](https://github.com/derolli1976/enpal-wallbox-addon/issues/24)
+
+**Implemented enhancements:**
+
+- Kompatibilität mit neuer Enpal Box Firmware: Statusfeld heißt jetzt `Connector` (OCPP-Werte) statt `Status`. Beide Varianten werden automatisch erkannt.
+- Übersetzung der neuen OCPP-Werte (`Available`, `Charging`, `Finishing`, `SuspendedEV`, ...) in das bisherige Legacy-Vokabular (`NotConnected`, `Connected`, `Charging`, `Finishing`, `Unknown`), damit die Home Assistant Integration ohne Änderung weiter funktioniert.
+- Originalwert wird zusätzlich als `raw_status` (plus `status_source: "connector"`) im JSON-Response zurückgegeben.
+- Neuer Lademodus-Endpoint `POST /wallbox/set_smart` und neuer Button `Set Smart`.
+
+
 ## [v1.2.0](https://github.com/derolli1976/enpal-wallbox-addon/tree/v1.2.0) (2025-05-27)
 
 [Full Changelog](https://github.com/derolli1976/enpal-wallbox-addon/compare/v1.1.0...v1.2.0)

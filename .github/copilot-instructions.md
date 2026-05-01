@@ -80,9 +80,18 @@ docker run -p 36725:36725 -v $(pwd)/test-options.json:/data/options.json enpal-w
 ### 1. Button Text Localization
 The Enpal Box UI may serve German or English text. XPath uses uppercase normalization, but button labels are hardcoded in English:
 - "Start Charging" / "Stop Charging"
-- "Set Eco" / "Set Solar" / "Set Full"
+- "Set Eco" / "Set Solar" / "Set Full" / "Set Smart"
 
 **If localization breaks**: Add German equivalents or regex patterns in XPath.
+
+### 1b. Status Field Label (Firmware Drift)
+Newer Enpal Box firmware renamed the wallbox status field from `Status ...` to `Connector ...` (OCPP `ChargePointStatus` values such as `Available`, `Charging`, `Finishing`, `SuspendedEV`).
+- `get_status()` iterates over a `STATUS_LABELS` list (`["Status", "Connector"]`) and uses the first label that resolves on the page.
+- When the value comes from the `Connector` label, it is translated back to the legacy vocabulary (`NotConnected`, `Connected`, `Charging`, `Finishing`, `Unknown`) via `CONNECTOR_TO_LEGACY_STATUS` so the Home Assistant integration (https://github.com/derolli1976/enpal) keeps working unchanged.
+- The original OCPP value is always exposed as `raw_status` (with `status_source: "connector"`) in the JSON response.
+- Unknown OCPP values are passed through and logged as `WARNING` so the map can be extended.
+
+**If a new firmware introduces yet another label or value**: extend `STATUS_LABELS` and/or `CONNECTOR_TO_LEGACY_STATUS` in `run.py` — do not change the legacy output vocabulary, that is the public contract toward the HA integration.
 
 ### 2. Driver Lifecycle
 - **Always use `get_shared_driver()`** - never access `shared_driver` directly

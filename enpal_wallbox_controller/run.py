@@ -80,8 +80,8 @@ DRIVER_TIMEOUT_SEC = 300
 
 # Status caching for transient "Unknown" states
 # When the wallbox reports "Charging" and then briefly switches to "Unknown",
-# we cache the last valid "Charging" status for up to 10 minutes.
-STATUS_CACHE_TIMEOUT_SEC = 600  # 10 minutes
+# we cache the last valid "Charging" status for up to 2 minutes.
+STATUS_CACHE_TIMEOUT_SEC = 120  # 2 minutes
 _cached_status = None       # Last known valid "Charging" status text
 _cached_mode = None         # Corresponding mode at the time of caching
 _unknown_since = None       # Timestamp when "Unknown" was first seen after "Charging"
@@ -144,11 +144,12 @@ class ButtonLabels:
     SET_ECO = "Set Eco"
     SET_FULL = "Set Full"
     SET_SOLAR = "Set Solar"
-    
+    SET_SMART = "Set Smart"
+
     @classmethod
     def all(cls):
         """Return list of all button labels."""
-        return [cls.START_CHARGING, cls.STOP_CHARGING, cls.SET_ECO, cls.SET_FULL, cls.SET_SOLAR]
+        return [cls.START_CHARGING, cls.STOP_CHARGING, cls.SET_ECO, cls.SET_FULL, cls.SET_SOLAR, cls.SET_SMART]
 
 def build_button_xpath(label_text):
     """Build case-insensitive XPath for button matching by text.
@@ -221,17 +222,48 @@ def check_buttons_by_text():
         _LOGGER.debug(driver.page_source)
         return jsonify({"success": False, "error": str(e)})
 
+# Translation map: new OCPP-style "Connector" values → legacy "Status" values.
+# Newer Enpal Box firmware exposes the OCPP ChargePointStatus on the wallbox
+# page (e.g. "Connector SuspendedEV") instead of the previous short status
+# tokens (e.g. "Status Charging"). The Home Assistant integration consumes
+# the /wallbox/status endpoint and still expects the legacy vocabulary, so we
+# normalize the new values here. Unknown/missing keys are passed through
+# unchanged and a warning is logged so we can extend the map over time.
+#
+# Legacy "Status" values produced by the old firmware:
+#   Unknown, NotConnected, unknown, Connected, Charging, Finishing
+#
+# Mapping confirmed against Enpal Box behaviour (user feedback):
+#   Connector Available    → no car connected         → NotConnected
+#   Connector Charging     → actively charging        → Charging
+#   Connector Finishing    → car only plugged in      → Connected
+#   Connector SuspendedEV  → fully charged / target   → Finishing
+# The original OCPP value is always exposed as `raw_status` in the response
+# so users who want finer granularity can still react on it.
+CONNECTOR_TO_LEGACY_STATUS = {
+    "Available": "NotConnected",
+    "Preparing": "Connected",
+    "Charging": "Charging",
+    "SuspendedEV": "Finishing",
+    "SuspendedEVSE": "Connected",
+    "Finishing": "Connected",
+    "Reserved": "Connected",
+    "Unavailable": "Unknown",
+    "Faulted": "Unknown",
+}
+
+
 def _apply_status_cache(status_text, mode_text):
     """Apply caching logic for transient 'Unknown' status after 'Charging'.
-    
+
     When the wallbox was previously reporting 'Charging' and switches to 'Unknown',
     the cached 'Charging' status is returned for up to STATUS_CACHE_TIMEOUT_SEC (10 min).
     After that timeout, 'Unknown' is passed through.
-    
+
     Args:
         status_text: The raw status text from the wallbox page
         mode_text: The raw mode text from the wallbox page
-    
+
     Returns:
         Tuple of (effective_status, effective_mode, is_cached)
     """
@@ -304,19 +336,66 @@ def get_status():
         _LOGGER.debug("Waiting for 'Mode' element...")
         mode_element = robust_wait(driver, "//h6[contains(text(), 'Mode ')]", timeout=5, retries=3)
 
-        _LOGGER.debug("Waiting for 'Status' element...")
-        status_element = robust_wait(driver, "//p[contains(text(), 'Status ')]", timeout=5, retries=3)
+        # The status field label changed in newer Enpal Box firmware versions.
+        # Older firmware: <p>Status Charging</p>
+        # Newer firmware: <p>Connector SuspendedEV</p>
+        # Try known labels in order; the first match wins.
+        STATUS_LABELS = ["Status", "Connector"]
+        status_element = None
+        status_label_used = None
+        for label in STATUS_LABELS:
+            try:
+                _LOGGER.debug(f"Waiting for status element with label '{label}'...")
+                status_element = robust_wait(
+                    driver,
+                    f"//p[contains(text(), '{label} ')]",
+                    timeout=3,
+                    retries=2,
+                )
+                status_label_used = label
+                _LOGGER.debug(f"Status element found using label '{label}'")
+                break
+            except TimeoutException:
+                _LOGGER.debug(f"Status label '{label}' not found, trying next...")
+                continue
+
+        if status_element is None:
+            raise TimeoutException(
+                f"No known status label found on page. Tried: {STATUS_LABELS}"
+            )
 
         mode_text = mode_element.text.replace("Mode ", "").strip()
-        status_text = status_element.text.replace("Status ", "").strip()
+        status_text = status_element.text.replace(f"{status_label_used} ", "").strip()
+        raw_status_text = status_text
+
+        # If the status was read from the new "Connector" label, translate the
+        # OCPP-style values back to the legacy "Status" vocabulary so that the
+        # Home Assistant integration (https://github.com/derolli1976/enpal),
+        # which still expects the old wording, keeps working unchanged.
+        if status_label_used == "Connector":
+            translated = CONNECTOR_TO_LEGACY_STATUS.get(status_text)
+            if translated is not None:
+                _LOGGER.debug(
+                    f"Translated Connector value '{status_text}' "
+                    f"→ legacy Status '{translated}'"
+                )
+                status_text = translated
+            else:
+                _LOGGER.warning(
+                    f"Unknown Connector value '{status_text}' - no legacy "
+                    f"translation available, passing through unchanged"
+                )
 
         # Apply status caching logic for transient "Unknown" after "Charging"
         effective_status, effective_mode, is_cached = _apply_status_cache(status_text, mode_text)
 
         result = {"success": True, "mode": effective_mode, "status": effective_status}
+        if status_label_used == "Connector" and raw_status_text != effective_status:
+            result["raw_status"] = raw_status_text
+            result["status_source"] = "connector"
         if is_cached:
             result["cached"] = True
-            result["raw_status"] = status_text
+            result["raw_status"] = raw_status_text
         _LOGGER.debug(f"Status result JSON: {json.dumps(result)}")
         _LOGGER.info(f"Status retrieved: mode='{effective_mode}', status='{effective_status}'{' (cached)' if is_cached else ''}")
         return jsonify(result)
@@ -353,6 +432,10 @@ def set_mode_full():
 @app.route("/wallbox/set_solar", methods=["POST"])
 def set_mode_solar():
     return jsonify({"success": click_button_by_text(ButtonLabels.SET_SOLAR)})
+
+@app.route("/wallbox/set_smart", methods=["POST"])
+def set_mode_smart():
+    return jsonify({"success": click_button_by_text(ButtonLabels.SET_SMART)})
 
 if __name__ == "__main__":
     _LOGGER.info("Starting Wallbox API service on port 36725...")

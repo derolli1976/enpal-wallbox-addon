@@ -1,6 +1,15 @@
 # Enpal Wallbox Controller (Home Assistant Add-on)
 
+> [!IMPORTANT]
+> Seit Version **3.0.0** der Home Assistant Integration [derolli1976/enpal](https://github.com/derolli1976/enpal) ist die Wallbox-Steuerung **nativ** in der Integration enthalten.
+> Dieses Add-on ist damit **voraussichtlich nicht mehr erforderlich** und wird von mir **nicht mehr aktiv weiterentwickelt**.
+> Das Projekt befindet sich im **Wartungsmodus**: Ich versuche weiterhin, gemeldete Bugs nach Möglichkeit zu beheben.
+
 Dieses Add-on ermöglicht die Steuerung der Enpal Wallbox über die lokale Webseite der Enpal Box (z. B. `http://192.168.178.178/wallbox`). Die Steuerung erfolgt durch automatisiertes Klicken der UI-Buttons mittels Selenium und Chromium im Headless-Modus.
+
+## 📢 Projektstatus
+
+Siehe den **IMPORTANT**-Hinweis oben: Das Add-on ist durch die native Wallbox-Steuerung in der Integration v3.0.0 voraussichtlich überflüssig und wird im Wartungsmodus weitergeführt.
 
 ## 🔧 Funktionen
 
